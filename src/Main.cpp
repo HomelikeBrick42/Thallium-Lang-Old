@@ -358,6 +358,7 @@ Token* Lexer_NextToken(Lexer* lexer) {
 			case '%':  return LexChars(TokenKind_Percent, 1);
 			case ':':  return LexChars(TokenKind_Colon, 1);
 			case ';':  return LexChars(TokenKind_Semicolon, 1);
+			case '=':  return LexChars(TokenKind_Equals, 1);
 			case '(':  return LexChars(TokenKind_OpenParentheses, 1);
 			case ')':  return LexChars(TokenKind_CloseParentheses, 1);
 
@@ -501,6 +502,8 @@ Token* Lexer_NextToken(Lexer* lexer) {
 }
 
 enum AstKind : u8 {
+	AstKind_Assignment,
+
 	AstKind_Identifier,
 	AstKind_Integer,
 	AstKind_UnaryOperator,
@@ -515,6 +518,21 @@ struct Ast {
 
 struct Ast_Expression : Ast {
 };
+
+struct Ast_Assignment : Ast {
+	Token* Name;
+	Ast_Expression* Value;
+};
+
+Ast_Assignment* Ast_Assignment_Create(Token* name, Ast_Expression* value) {
+	Ast_Assignment* ast = cast(Ast_Assignment*) calloc(1, sizeof(*ast));
+	*ast = {
+		{ .Kind = AstKind_Assignment },
+		.Name = name,
+		.Value = value,
+	};
+	return ast;
+}
 
 struct Ast_Identifier : Ast_Expression {
 	Token* IdentifierToken;
@@ -725,8 +743,35 @@ Ast_Expression* Parser_ParseBinaryExpression(Parser* parser, u64 parentPresedenc
 	return left;
 }
 
+Array<Ast*> Parser_Parse(Parser* parser) {
+	Array<Ast*> statements = Array_Create<Ast*>();
+
+	while (Parser_GetCurrentToken(parser)->Kind != TokenKind_EndOfInput) {
+		if (Parser_GetCurrentToken(parser)->Kind == TokenKind_Semicolon) {
+			Parser_NextToken(parser);
+		} else if (Parser_GetCurrentToken(parser)->Kind == TokenKind_Identifier &&
+			Parser_PeekToken(parser, 1)->Kind == TokenKind_Equals) {
+			Token* name = Parser_NextToken(parser);
+			ASSERT(Parser_NextToken(parser)->Kind == TokenKind_Equals);
+			Ast_Expression* expression = Parser_ParseExpression(parser);
+			ASSERT(Parser_NextToken(parser)->Kind == TokenKind_Semicolon);
+			Array_Push<Ast*>(statements, Ast_Assignment_Create(name, expression));
+		} else {
+			Ast_Expression* expression = Parser_ParseExpression(parser);
+			ASSERT(Parser_NextToken(parser)->Kind == TokenKind_Semicolon);
+			Array_Push<Ast*>(statements, expression);
+		}
+	}
+
+	return statements;
+}
+
 int main(int argc, char** argv) {
-	String source = StringFromLiteral("value + hello * idk12345 / var1");
+	String source = StringFromLiteral(R"(
+1 + 2 * 3;
+hello = 5 + 3 * 3121;
+var = hello * 10;
+)");
 
 #if 0
 	Lexer* lexer = Lexer_Create(source);
@@ -757,19 +802,26 @@ int main(int argc, char** argv) {
 	Parser* parser = Parser_Create(source);
 	defer(Parser_Destroy(parser));
 
-	Ast_Expression* ast = Parser_ParseExpression(parser);
-#if 0
-	void PrintAst(Ast_Expression* ast);
-	PrintAst(ast);
-#endif
+	Array<Ast*> statements = Parser_Parse(parser);
+	for (u64 i = 0; i < statements.Length; i++) {
+		void PrintAst(Ast* ast);
+		PrintAst(statements[i]);
+		printf("\n");
+	}
 
 	return 0;
 }
 
-void PrintAst(Ast_Expression* ast) {
+void PrintAst(Ast* ast) {
 	ASSERT(ast);
 
 	switch (ast->Kind) {
+		case AstKind_Assignment: {
+			Ast_Assignment* assignment = cast(Ast_Assignment*) ast;
+			printf("%.*s = ", StringPrintfFormat(assignment->Name->StringValue));
+			PrintAst(assignment->Value);
+		} break;
+
 		case AstKind_Identifier: {
 			Ast_Identifier* identifier = cast(Ast_Identifier*) ast;
 			printf("%.*s", StringPrintfFormat(identifier->IdentifierToken->StringValue));
