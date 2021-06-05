@@ -62,7 +62,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>-Wno-unused-parameter -Wno-c99-designator</AdditionalOptions>
+      <AdditionalOptions>-Wno-unused-parameter -Wno-c99-designator -Wno-unused-variable</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -80,7 +80,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>-Wno-unused-parameter -Wno-c99-designator</AdditionalOptions>
+      <AdditionalOptions>-Wno-unused-parameter -Wno-c99-designator -Wno-unused-variable</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
